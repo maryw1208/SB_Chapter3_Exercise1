@@ -1,0 +1,134 @@
+---
+title: "Chap3_Exercise1_BasicDataManiupulation"
+author: "Mary Wojtas"
+date: "November 8, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+##(0) Load the data into R Studio
+```{r}
+library(readxl)
+refine_original <- read_excel("~/Documents/RProjects/Chapter3Exercise/refine_original.xlsx")
+refine <- refine_original
+```
+
+##(1) Clean up brand names: transform values in company to lowercase
+```{r}
+refine$company <- tolower(refine$company)
+```
+
+###(1b) Clean up the misspellings
+```{r}
+refine$company[10] <- "akzo"
+refine$company[11] <- "akzo"
+refine$company[15] <- "phillips"
+refine$company[16] <- "phillips"
+refine$company[3:5] <- "phillips"
+refine$company[22] <- "unilever"
+```
+##(2) Create a new column called product_code from Product code/number
+## This will separate product code from number
+```{r}
+library(dplyr)
+refine <- mutate(refine, product_code = refine$`Product code / number`[1:25])
+```
+
+### (2b) Moves product_code to 1st column
+```{r}
+refine <- select(refine, product_code, everything())
+refine <- select(refine, company, everything())
+```
+
+### (2c) Search on p- and substitute just the p for all values in product_code
+```{r}
+library(stringr)
+refine$product_code[1:25] = str_replace(refine$product_code[1:25], "^[:alpha:][:punct:]", str_sub(refine$product_code[1:25], end =1))
+```
+
+### (2d) Rename 'Product code/ number' to just product_number
+```{r}
+refine <- rename(refine, product_number='Product code / number')
+```
+
+### (2e) Remove the p- from the values for all columns in product number
+```{r}
+refine$product_number[1:25] <- str_remove(refine$product_number[1:25], "^[:alpha:][:punct:]")
+```
+
+## (3) Add product categories
+### (3b) Add a column called product_category: populates new col w/contents from existing column
+```{r}
+refine <- mutate(refine, product_category = refine$product_code[1:25])
+```
+### (3c) Populate new column with new value depending on what the pre-existing column had.
+```{r}
+refine$product_category[1:25] <- case_when(refine$product_category=="p" ~ "SmartPhone", refine$product_category=="x" ~ "Laptop", refine$product_category=="v" ~ "TV", refine$product_category=="q" ~ "Tablet")
+```
+### (3d) Reorder the columns
+```{r}
+col_order <- c("company", "product_code", "product_category", "product_number", "address", "city", "country", "name")
+refine <- refine[, col_order]
+```
+
+##(4) Add full address for geocoding
+###(4b) Create a new column full_address that concatenates the 3 address fields (address, city, country), separated by columns
+```{r}
+library(tidyr)
+refine <- unite(refine, address, city, country, col="full_address", sep=",")
+```
+
+##(5) Create dummy variables for company and product category
+### (5b) Add four binary (1 or 0) columns for company: company_philips, company_akzo, company_van_houten and company_unilever
+```{r}
+install.packages("dplyr")
+library(dplyr)
+refine <- mutate(refine, company_phillips=refine$company[1:25])
+View(refine)
+refine$company_phillips[1:25] <- case_when(refine$company_phillips=="phillips" ~ 1, refine$company_phillips=="akzo" ~ 0, refine$company_phillips=="van houten" ~ 0, refine$company_phillips=="unilever" ~ 0)
+View(refine)
+refine <- mutate(refine, company_akzo=refine$company[1:25])
+View(refine)
+refine$company_akzo[1:25] <- case_when(refine$company_akzo=="phillips" ~ 0, refine$company_akzo=="akzo" ~ 1, refine$company_akzo=="van houten" ~ 0, refine$company_akzo=="unilever" ~ 0)
+View(refine)
+refine <- mutate(refine, company_van_houten=refine$company[1:25])
+refine$company_van_houten[1:25] <- case_when(refine$company_van_houten=="phillips" ~ 0, refine$company_van_houten=="akzo" ~ 0, refine$company_van_houten=="van houten" ~ 1, refine$company_van_houten=="unilever" ~ 0)
+View(refine)
+refine <- mutate(refine, company_unilever=refine$company[1:25])
+refine$company_unilever[1:25] <- case_when(refine$company_unilever=="phillips" ~ 0, refine$company_unilever=="akzo" ~ 0, refine$company_unilever=="van houten" ~ 0, refine$company_unilever=="unilever" ~ 1)
+View(refine)
+refine3 <- refine
+View(refine3)
+```
+###(5c) Add four binary (1 or 0) columns for product category: product_smartphone, product_tv, product_laptop and product_tablet.
+```{r}
+new_cols_order <- c("company", "product_category", "product_code", "product_number", "product_smartphone","product_tv", "product_laptop", "product_tablet", "full_address", "name", "company_phillips", "company_akzo","company_van_houten","company_unilever")
+refine <- refine[, new_cols_order]
+refine <- mutate(refine, product_smartphone=refine$product_category[1:25])
+View(refine)
+refine$product_smartphone[1:25] <- case_when(refine$product_smartphone=="SmartPhone" ~ 1, refine$product_smartphone=="Laptop" ~ 0, refine$product_smartphone=="TV" ~ 0, refine$product_smartphone=="Tablet" ~ 0)
+View(refine)
+refine <- mutate(refine, product_laptop=refine$product_category[1:25])
+refine$product_laptop[1:25] <- case_when(refine$product_laptop=="SmartPhone" ~ 0, refine$product_laptop=="Laptop" ~ 1, refine$product_laptop=="TV" ~ 0, refine$product_laptop=="Tablet" ~ 0)
+View(refine)
+refine <- mutate(refine, product_tv=refine$product_category[1:25])
+refine$product_tv[1:25] <- case_when(refine$product_tv=="SmartPhone" ~ 0, refine$product_tv=="Laptop" ~ 0, refine$product_tv=="TV" ~ 1, refine$product_tv=="Tablet" ~ 0)
+View(refine)
+refine <- mutate(refine, product_tablet=refine$product_category[1:25])
+refine$product_tablet[1:25] <- case_when(refine$product_tablet=="SmartPhone" ~ 0, refine$product_tablet=="Laptop" ~ 0, refine$product_tablet=="TV" ~ 0, refine$product_tablet=="Tablet" ~ 1)
+```
+## (6) Output refine_clean
+```{r}
+refine_clean2 <- refine
+refine_clean2 <- write_csv(refine_clean2, "~/Documents/RProjects/Ch3_Ver2/refine_clean2.csv")
+```
+
+
+
+
+
+
+
+
